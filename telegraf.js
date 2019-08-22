@@ -18,7 +18,7 @@ const DEFAULT_OPTIONS = {
 const noop = () => { }
 
 class Telegraf extends Composer {
-  constructor (token, options) {
+  constructor(token, options) {
     super()
     this.options = {
       ...DEFAULT_OPTIONS,
@@ -38,35 +38,35 @@ class Telegraf extends Composer {
     }
   }
 
-  set token (token) {
+  set token(token) {
     this.telegram = new Telegram(token, this.telegram
       ? this.telegram.options
       : this.options.telegram
     )
   }
 
-  get token () {
+  get token() {
     return this.telegram.token
   }
 
-  set webhookReply (webhookReply) {
+  set webhookReply(webhookReply) {
     this.telegram.webhookReply = webhookReply
   }
 
-  get webhookReply () {
+  get webhookReply() {
     return this.telegram.webhookReply
   }/* eslint brace-style: 0 */
 
-  catch (handler) {
+  catch(handler) {
     this.handleError = handler
     return this
   }
 
-  webhookCallback (path = '/') {
+  webhookCallback(path = '/') {
     return generateCallback(path, (update, res) => this.handleUpdate(update, res), debug)
   }
 
-  startPolling (timeout = 30, limit = 100, allowedUpdates, stopCallback = noop) {
+  startPolling(timeout = 30, limit = 100, allowedUpdates, stopCallback = noop) {
     this.polling.timeout = timeout
     this.polling.limit = limit
     this.polling.allowedUpdates = allowedUpdates
@@ -80,7 +80,7 @@ class Telegraf extends Composer {
     return this
   }
 
-  startWebhook (hookPath, tlsOptions, port, host, cb) {
+  createServer(hookPath, tlsOptions, port, host, cb) {
     const webhookCb = this.webhookCallback(hookPath)
     const callback = cb && typeof cb === 'function'
       ? (req, res) => webhookCb(req, res, () => cb(req, res))
@@ -88,13 +88,18 @@ class Telegraf extends Composer {
     this.webhookServer = tlsOptions
       ? require('https').createServer(tlsOptions, callback)
       : require('http').createServer(callback)
+    return this.webhookServer
+  }
+
+  startWebhook(hookPath, tlsOptions, port, host, cb) {
+    this.createServer(hookPath, tlsOptions, port, cb)
     this.webhookServer.listen(port, host, () => {
       debug('Webhook listening on port: %s', port)
     })
     return this
   }
 
-  launch (config = {}) {
+  launch(config = {}) {
     return this.telegram.getMe()
       .then((botInfo) => {
         debug(`Launching @${botInfo.username}`)
@@ -126,7 +131,7 @@ class Telegraf extends Composer {
       })
   }
 
-  stop (cb) {
+  stop(cb) {
     return new Promise((resolve) => {
       const done = () => resolve() & cb()
       if (this.webhookServer) {
@@ -139,7 +144,7 @@ class Telegraf extends Composer {
     })
   }
 
-  handleUpdates (updates) {
+  handleUpdates(updates) {
     if (!Array.isArray(updates)) {
       return Promise.reject(new Error('Updates must be an array'))
     }
@@ -153,7 +158,7 @@ class Telegraf extends Composer {
     ])
   }
 
-  handleUpdate (update, webhookResponse) {
+  handleUpdate(update, webhookResponse) {
     debug('Processing update', update.update_id)
     const tg = new Telegram(this.token, this.telegram.options, webhookResponse)
     const ctx = new Context(update, tg, this.options)
@@ -161,7 +166,7 @@ class Telegraf extends Composer {
     return this.middleware()(ctx).catch(this.handleError)
   }
 
-  fetchUpdates () {
+  fetchUpdates() {
     if (!this.polling.started) {
       this.polling.stopCallback && this.polling.stopCallback()
       return
